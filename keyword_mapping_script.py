@@ -9,7 +9,7 @@ api_key = os.getenv('AHREFS_API_KEY')
 
 # Function to fetch organic keywords for a specific URL
 def get_keywords_for_url(url):
-    api_url = f"https://apiv2.ahrefs.com?from=organic_keywords&target={url}&mode=exact&output=json&token={api_key}"
+    api_url = f"https://api.ahrefs.com/v3/site-explorer/keywords"
     
     try:
         response = requests.get(api_url)
@@ -21,7 +21,7 @@ def get_keywords_for_url(url):
 
 # Function to fetch related keywords for a given keyword (secondary search)
 def get_related_keywords(keyword):
-    api_url = f"https://apiv2.ahrefs.com?from=phrase_match&target={keyword}&output=json&token={api_key}"
+    api_url = f"https://api.ahrefs.com/v3/related_keywords"
     
     try:
         response = requests.get(api_url)
