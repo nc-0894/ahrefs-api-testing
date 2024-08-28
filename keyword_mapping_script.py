@@ -9,7 +9,7 @@ api_key = os.getenv('AHREFS_API_KEY')
 
 # Function to fetch organic keywords for a specific URL
 def get_keywords_for_url(url):
-    api_url = f"https://api.ahrefs.com/v3/site-explorer/keywords"
+    api_url = f"https://apiv2.ahrefs.com?from=organic_keywords&target={url}&mode=exact&output=json&token={api_key}"
     
     try:
         response = requests.get(api_url)
@@ -21,7 +21,7 @@ def get_keywords_for_url(url):
 
 # Function to fetch related keywords for a given keyword (secondary search)
 def get_related_keywords(keyword):
-    api_url = f"https://api.ahrefs.com/v3/related_keywords"
+    api_url = f"https://apiv2.ahrefs.com?from=related_keywords&target={keyword}&output=json&token={api_key}"
     
     try:
         response = requests.get(api_url)
@@ -41,10 +41,8 @@ def find_best_keyword(keywords, url_slug):
         difficulty = kw.get('difficulty', 100)  # Assume max difficulty if not provided
         keyword_text = kw.get('keyword', '')
 
-        # Simple scoring formula: prioritize high volume and low difficulty
+        # Scoring formula: prioritize high volume, low difficulty, and relevance to the URL slug
         score = volume - (difficulty * 10)  # Adjust the weighting as needed
-
-        # Include a factor for matching the keyword with the URL slug topic
         if url_slug in keyword_text.lower():
             score += 1000  # Boost score if the keyword matches the URL slug topic
 
@@ -75,12 +73,12 @@ for url in urls:
         keywords = data.get('keywords', [])
         best_keyword = find_best_keyword(keywords, url_slug)
         
-        # If no suitable keyword found, perform secondary search using phrase match
+        # If no suitable keyword found, perform secondary search using related keywords
         if not best_keyword:
             print(f"No suitable keyword found for {url}. Searching for related keywords...")
             related_keywords_data = get_related_keywords(url_slug)
             if related_keywords_data:
-                related_keywords = related_keywords_data.get('phrases', [])
+                related_keywords = related_keywords_data.get('keywords', [])
                 best_keyword = find_best_keyword(related_keywords, url_slug)
         
         url_keyword_map[url] = best_keyword or 'No suitable keyword found'
