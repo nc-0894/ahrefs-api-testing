@@ -13,7 +13,7 @@ def get_organic_keywords_for_url(url, country='us', date='2024-09-09'):
         'Authorization': f'Bearer {api_key}',
         'Accept': 'application/json'
     }
-    select_columns = 'keyword,volume,best_position,keyword_difficulty,cpc,sum_traffic'
+    select_columns = 'keyword,volume,best_position,keyword_difficulty,best_position_url'
     api_url = f"https://api.ahrefs.com/v3/site-explorer/organic-keywords?target={url}&country={country}&date={date}&select={select_columns}&output=json"
     
     try:
@@ -24,6 +24,46 @@ def get_organic_keywords_for_url(url, country='us', date='2024-09-09'):
         print(f"Error fetching organic keywords for {url}: {e}")
         return None
 
+# Function to fetch related keywords for additional research
+def get_related_keywords(keyword, country='us'):
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Accept': 'application/json'
+    }
+    select_columns = 'keyword,volume,keyword_difficulty'
+    api_url = f"https://api.ahrefs.com/v3/keywords-explorer/related-terms?target={keyword}&country={country}&select={select_columns}&output=json"
+    
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching related keywords for {keyword}: {e}")
+        return None
+
+# Scoring function based on volume, difficulty, and relevance to the URL slug
+def find_best_keyword(keywords, url_slug, target_url):
+    best_keyword = None
+    best_score = float('-inf')
+    
+    for kw in keywords:
+        volume = kw.get('volume', 0)
+        difficulty = kw.get('keyword_difficulty', 100)  # Assume max difficulty if not provided
+        keyword_text = kw.get('keyword', '')
+        ranking_url = kw.get('best_position_url', '')  # Get the URL associated with the keyword
+
+        # Only consider keywords that are ranking for the specific URL
+        if ranking_url == target_url:
+            # Scoring formula: prioritize high volume, low difficulty, and relevance to the URL slug
+            score = volume - (difficulty * 10)
+            if url_slug in keyword_text.lower():
+                score += 1000  # Boost score if the keyword matches the URL slug topic
+
+            if score > best_score:
+                best_score = score
+                best_keyword = keyword_text
+    
+    return best_keyword
 
 # List of URLs on your domain
 urls = [
@@ -38,11 +78,24 @@ urls = [
 url_keyword_map = {}
 
 for url in urls:
-    data = get_organic_keywords_for_url(url)
-    if data:
-        keywords = data.get('keywords', [])
-        best_keyword = keywords[0]['keyword'] if keywords else 'No suitable keyword found'
-        url_keyword_map[url] = best_keyword
+    url_slug = url.split('/')[-1].replace('-', ' ')  # Extract URL slug
+    organic_data = get_organic_keywords_for_url(url)
+    
+    if organic_data:
+        keywords = organic_data.get('keywords', [])
+        best_keyword = find_best_keyword(keywords, url_slug, url)
+        
+        # If no suitable keyword found, perform secondary search using related terms
+        if not best_keyword:
+            print(f"No suitable keyword found for {url}. Searching for related terms...")
+            if keywords:
+                first_keyword = keywords[0].get('keyword', '')  # Use first keyword for related terms
+                related_keywords_data = get_related_keywords(first_keyword)
+                if related_keywords_data:
+                    related_keywords = related_keywords_data.get('keywords', [])
+                    best_keyword = find_best_keyword(related_keywords, url_slug, url)
+
+        url_keyword_map[url] = best_keyword or 'No suitable keyword found'
 
 # Convert the map to a DataFrame for easier handling
 df = pd.DataFrame(list(url_keyword_map.items()), columns=['URL', 'Best Keyword'])
