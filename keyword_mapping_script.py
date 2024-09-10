@@ -44,6 +44,8 @@ def get_related_keywords(keyword, country='us'):
 # Scoring function based on volume, difficulty, and relevance to the URL slug
 def find_best_keyword(keywords, url_slug, target_url):
     best_keyword = None
+    best_volume = 0
+    best_difficulty = 100
     best_score = float('-inf')
     
     for kw in keywords:
@@ -62,8 +64,10 @@ def find_best_keyword(keywords, url_slug, target_url):
             if score > best_score:
                 best_score = score
                 best_keyword = keyword_text
+                best_volume = volume
+                best_difficulty = difficulty
     
-    return best_keyword
+    return best_keyword, best_volume, best_difficulty
 
 # List of URLs on your domain
 urls = [
@@ -75,7 +79,7 @@ urls = [
 ]
 
 # Dictionary to store URL to keyword mappings
-url_keyword_map = {}
+url_keyword_map = []
 
 for url in urls:
     url_slug = url.split('/')[-1].replace('-', ' ')  # Extract URL slug
@@ -83,7 +87,7 @@ for url in urls:
     
     if organic_data:
         keywords = organic_data.get('keywords', [])
-        best_keyword = find_best_keyword(keywords, url_slug, url)
+        best_keyword, best_volume, best_difficulty = find_best_keyword(keywords, url_slug, url)
         
         # If no suitable keyword found, perform secondary search using related terms
         if not best_keyword:
@@ -93,12 +97,17 @@ for url in urls:
                 related_keywords_data = get_related_keywords(first_keyword)
                 if related_keywords_data:
                     related_keywords = related_keywords_data.get('keywords', [])
-                    best_keyword = find_best_keyword(related_keywords, url_slug, url)
+                    best_keyword, best_volume, best_difficulty = find_best_keyword(related_keywords, url_slug, url)
 
-        url_keyword_map[url] = best_keyword or 'No suitable keyword found'
+        url_keyword_map.append({
+            'URL': url,
+            'Best Keyword': best_keyword or 'No suitable keyword found',
+            'Keyword Volume': best_volume,
+            'Keyword Difficulty': best_difficulty
+        })
 
 # Convert the map to a DataFrame for easier handling
-df = pd.DataFrame(list(url_keyword_map.items()), columns=['URL', 'Best Keyword'])
+df = pd.DataFrame(url_keyword_map)
 
 # Print the results
 print(df)
