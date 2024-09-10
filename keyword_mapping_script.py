@@ -7,50 +7,23 @@ from dotenv import load_dotenv
 load_dotenv()
 api_key = os.getenv('AHREFS_API_KEY')
 
-# Function to fetch organic keywords for a specific URL
-def get_keywords_for_url(url):
-    api_url = f"https://apiv2.ahrefs.com?from=organic_keywords&target={url}&mode=exact&output=json&token={api_key}"
+# Function to fetch organic keywords for a specific URL or domain
+def get_organic_keywords_for_url(url, country='us', date='2024-09-09'):
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Accept': 'application/json'
+    }
+    select_columns = 'keyword,volume,best_position,keyword_difficulty,cpc,sum_traffic'
+    api_url = f"https://api.ahrefs.com/v3/site-explorer/organic-keywords?target={url}&country={country}&date={date}&select={select_columns}&output=json"
     
     try:
-        response = requests.get(api_url)
+        response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching data for {url}: {e}")
+        print(f"Error fetching organic keywords for {url}: {e}")
         return None
 
-# Function to fetch related keywords for a given keyword (secondary search)
-def get_related_keywords(keyword):
-    api_url = f"https://apiv2.ahrefs.com?from=related_keywords&target={keyword}&output=json&token={api_key}"
-    
-    try:
-        response = requests.get(api_url)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching related keywords for {keyword}: {e}")
-        return None
-
-# Function to determine the best keyword based on volume, difficulty, and URL slug
-def find_best_keyword(keywords, url_slug):
-    best_keyword = None
-    best_score = float('-inf')
-    
-    for kw in keywords:
-        volume = kw.get('volume', 0)
-        difficulty = kw.get('difficulty', 100)  # Assume max difficulty if not provided
-        keyword_text = kw.get('keyword', '')
-
-        # Scoring formula: prioritize high volume, low difficulty, and relevance to the URL slug
-        score = volume - (difficulty * 10)  # Adjust the weighting as needed
-        if url_slug in keyword_text.lower():
-            score += 1000  # Boost score if the keyword matches the URL slug topic
-
-        if score > best_score:
-            best_score = score
-            best_keyword = keyword_text
-    
-    return best_keyword
 
 # List of URLs on your domain
 urls = [
@@ -65,23 +38,11 @@ urls = [
 url_keyword_map = {}
 
 for url in urls:
-    # Extract the URL slug (the part after the last '/')
-    url_slug = url.split('/')[-1].replace('-', ' ')
-    
-    data = get_keywords_for_url(url)
+    data = get_organic_keywords_for_url(url)
     if data:
         keywords = data.get('keywords', [])
-        best_keyword = find_best_keyword(keywords, url_slug)
-        
-        # If no suitable keyword found, perform secondary search using related keywords
-        if not best_keyword:
-            print(f"No suitable keyword found for {url}. Searching for related keywords...")
-            related_keywords_data = get_related_keywords(url_slug)
-            if related_keywords_data:
-                related_keywords = related_keywords_data.get('keywords', [])
-                best_keyword = find_best_keyword(related_keywords, url_slug)
-        
-        url_keyword_map[url] = best_keyword or 'No suitable keyword found'
+        best_keyword = keywords[0]['keyword'] if keywords else 'No suitable keyword found'
+        url_keyword_map[url] = best_keyword
 
 # Convert the map to a DataFrame for easier handling
 df = pd.DataFrame(list(url_keyword_map.items()), columns=['URL', 'Best Keyword'])
