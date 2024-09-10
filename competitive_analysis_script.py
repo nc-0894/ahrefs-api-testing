@@ -13,7 +13,7 @@ def get_organic_keywords(domain, country='us', date='2024-09-09'):
         'Authorization': f'Bearer {api_key}',
         'Accept': 'application/json'
     }
-    select_columns = 'keyword,volume,best_position,keyword_difficulty'
+    select_columns = 'best_position_url,keyword,volume,best_position,keyword_difficulty'
     api_url = f"https://api.ahrefs.com/v3/site-explorer/organic-keywords?target={domain}&country={country}&date={date}&select={select_columns}&output=json"
     
     try:
@@ -25,13 +25,13 @@ def get_organic_keywords(domain, country='us', date='2024-09-09'):
         return None
     
 # Function to fetch backlinks for a competitor domain
-def get_backlinks(domain, country='us', date='2024-09-09'):
+def get_backlinks(domain):
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Accept': 'application/json'
     }
-    select_columns = 'backlink,anchor_text,referring_domain'
-    api_url = f"https://api.ahrefs.com/v3/site-explorer/all-backlinks?target={domain}&country={country}&date={date}&select={select_columns}&output=json"
+    select_columns = 'url_to_plain,anchor,refdomains_source'
+    api_url = f"https://api.ahrefs.com/v3/site-explorer/all-backlinks?target={domain}&select={select_columns}&output=json"
     
     try:
         response = requests.get(api_url, headers=headers)
@@ -42,13 +42,13 @@ def get_backlinks(domain, country='us', date='2024-09-09'):
         return None
 
 # Function to fetch top pages for a competitor domain
-def get_top_pages(domain, country='us', date='2024-09-09'):
+def get_top_pages(domain, date='2024-09-09'):
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Accept': 'application/json'
     }
-    select_columns = 'page,organic_traffic,backlinks'
-    api_url = f"https://api.ahrefs.com/v3/site-explorer/top-pages?target={domain}&country={country}&date={date}&select={select_columns}&output=json"
+    select_columns = 'raw_url,sum_traffic,keywords'
+    api_url = f"https://api.ahrefs.com/v3/site-explorer/top-pages?target={domain}&date={date}&select={select_columns}&output=json"
     
     try:
         response = requests.get(api_url, headers=headers)
@@ -60,13 +60,11 @@ def get_top_pages(domain, country='us', date='2024-09-09'):
 
 # Test with one competitor
 competitor = 'linkflow.ai'  # for testing purposes
-country = 'us'
-date = '2024-09-09'
 
 print(f"Fetching data for {competitor}...")
 
 # Fetch organic keywords for this competitor
-organic_keywords = get_organic_keywords(competitor, country, date)
+organic_keywords = get_organic_keywords(competitor)
 if organic_keywords:
     df_keywords = pd.DataFrame(organic_keywords.get('keywords', []))
     df_keywords.to_csv(f'{competitor}_organic_keywords.csv', index=False)
@@ -75,7 +73,7 @@ else:
     print("No organic keywords found")
 
 # Fetch backlinks for this competitor
-backlinks = get_backlinks(competitor, country, date)
+backlinks = get_backlinks(competitor)  # Updated to pass only competitor
 if backlinks:
     df_backlinks = pd.DataFrame(backlinks.get('backlinks', []))
     df_backlinks.to_csv(f'{competitor}_backlinks.csv', index=False)
@@ -84,7 +82,7 @@ else:
     print("No backlinks found")
 
 # Fetch top pages for this competitor
-top_pages = get_top_pages(competitor, country, date)
+top_pages = get_top_pages(competitor)  # Updated to pass only competitor
 if top_pages:
     df_top_pages = pd.DataFrame(top_pages.get('pages', []))
     df_top_pages.to_csv(f'{competitor}_top_pages.csv', index=False)
