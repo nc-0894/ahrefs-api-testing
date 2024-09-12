@@ -69,7 +69,7 @@ def find_best_keyword(keywords, url_slug, target_url):
     
     return best_keyword, best_volume, best_difficulty
 
-# List of URLs on your domain
+# List of URLs on your domain. Update accordingly.
 urls = [
     'https://linkflow.ai/saas-seo-agency/',
     'https://linkflow.ai/content-strategy-services/',
@@ -87,7 +87,7 @@ for url in urls:
     
     if organic_data:
         keywords = organic_data.get('keywords', [])
-        best_keyword, best_volume, best_difficulty = find_best_keyword(keywords, url_slug, url)
+        best_keyword, best_volume, best_difficulty = find_best_keyword(keywords, url_slug, url) #add best_position
         
         # If no suitable keyword found, perform secondary search using related terms
         if not best_keyword:

@@ -8,7 +8,7 @@ load_dotenv()
 api_key = os.getenv('AHREFS_API_KEY')
 
 # Function to fetch organic keywords for a competitor domain
-def get_organic_keywords(domain, country='us', date='2024-09-09'):
+def get_organic_keywords(domain, country='us', date='2024-09-09'): # update date accordingly
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Accept': 'application/json'
@@ -42,7 +42,7 @@ def get_backlinks(domain):
         return None
 
 # Function to fetch top pages for a competitor domain
-def get_top_pages(domain, date='2024-09-09'):
+def get_top_pages(domain, date='2024-09-09'): # update date accordingly
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Accept': 'application/json'
@@ -58,7 +58,7 @@ def get_top_pages(domain, date='2024-09-09'):
         print(f"Error fetching top pages for {domain}: {e}")
         return None
 
-# List of competitor domains
+# List of competitor domains. Update accordingly for respective competitors. Keep Client domain as first in list.
 competitors = ['linkflow.ai', 
                'www.simpletiger.com', 
                'www.siegemedia.com'
