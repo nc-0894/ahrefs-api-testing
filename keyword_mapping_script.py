@@ -1,7 +1,9 @@
 import requests
 import pandas as pd
 import os
+from urllib.parse import quote  # For URL encoding
 from dotenv import load_dotenv
+import re  # For filtering and cleaning the URL slug
 
 # Load API key from .env file
 load_dotenv()
@@ -13,8 +15,10 @@ def get_organic_keywords_for_url(url, country='us', date='2024-09-09'):
         'Authorization': f'Bearer {api_key}',
         'Accept': 'application/json'
     }
+    
+    encoded_url = quote(url, safe='')  # Encode URL to handle special characters
     select_columns = 'keyword,volume,best_position,keyword_difficulty,best_position_url'
-    api_url = f"https://api.ahrefs.com/v3/site-explorer/organic-keywords?target={url}&country={country}&date={date}&select={select_columns}&output=json"
+    api_url = f"https://api.ahrefs.com/v3/site-explorer/organic-keywords?target={encoded_url}&country={country}&date={date}&select={select_columns}&output=json"
     
     try:
         response = requests.get(api_url, headers=headers)
@@ -40,6 +44,17 @@ def get_related_keywords(keyword, country='us'):
     except requests.exceptions.RequestException as e:
         print(f"Error fetching related keywords for {keyword}: {e}")
         return None
+
+# Function to broaden the search term by extracting and cleaning the slug
+def extract_broader_context_from_slug(slug):
+    # Split the slug into words and remove numbers or short terms
+    slug_words = re.findall(r'\b\w{4,}\b', slug.lower())  # Only consider words with 4+ characters
+    # Further cleaning or filtering can be applied (e.g., removing common stop words)
+    if len(slug_words) > 1:
+        return " ".join(slug_words[:2])  # Use the first two broader words as the seed keyword
+    elif slug_words:
+        return slug_words[0]  # If only one word is valid, return it
+    return None  # No valid context found
 
 # Scoring function based on volume, difficulty, and relevance to the URL slug
 def find_best_keyword(keywords, url_slug, target_url):
@@ -69,32 +84,29 @@ def find_best_keyword(keywords, url_slug, target_url):
     
     return best_keyword, best_volume, best_difficulty
 
-# List of URLs on your domain. Update accordingly.
-urls = [
-    'https://linkflow.ai/saas-seo-agency/',
-    'https://linkflow.ai/content-strategy-services/',
-    'https://linkflow.ai/link-building-services/',
-    'https://linkflow.ai/video-seo-services/',
-    'https://linkflow.ai/saas-content-marketing-services/'
-]
+# Load URLs from CSV file (ensure CSV has a column named 'URL')
+csv_file = 'fodzyme_crawl.csv'
+urls_df = pd.read_csv(csv_file)
 
 # Dictionary to store URL to keyword mappings
 url_keyword_map = []
 
-for url in urls:
-    url_slug = url.split('/')[-1].replace('-', ' ')  # Extract URL slug
+# Iterate over the URLs loaded from the CSV file
+for index, row in urls_df.iterrows():
+    url = row['URL']
+    url_slug = url.split('/')[-1].replace('-', ' ')  # Extract URL slug (subject)
     organic_data = get_organic_keywords_for_url(url)
     
     if organic_data:
         keywords = organic_data.get('keywords', [])
-        best_keyword, best_volume, best_difficulty = find_best_keyword(keywords, url_slug, url) #add best_position
+        best_keyword, best_volume, best_difficulty = find_best_keyword(keywords, url_slug, url)
         
-        # If no suitable keyword found, perform secondary search using related terms
+        # If no suitable keyword found from organic search, use a broader term from the URL slug
         if not best_keyword:
-            print(f"No suitable keyword found for {url}. Searching for related terms...")
-            if keywords:
-                first_keyword = keywords[0].get('keyword', '')  # Use first keyword for related terms
-                related_keywords_data = get_related_keywords(first_keyword)
+            broader_term = extract_broader_context_from_slug(url_slug)
+            if broader_term:
+                print(f"No suitable keyword found for {url}. Searching for related terms using broader context '{broader_term}'...")
+                related_keywords_data = get_related_keywords(broader_term)
                 if related_keywords_data:
                     related_keywords = related_keywords_data.get('keywords', [])
                     best_keyword, best_volume, best_difficulty = find_best_keyword(related_keywords, url_slug, url)
